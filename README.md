@@ -12,12 +12,10 @@ cd ibponopenshift && chmod +x ibptool.sh
 ### Run the following command to start up IBP on OpenShift
 
 ```
-source mysettings.sh
 ./ibptool.sh up
 ```
 
 ### Remove IBP from OpenShift
 ```
-source mysettings.sh
 ./ibptool.sh down
 ```
