@@ -392,6 +392,9 @@ MODE=$1
 isValidateCMD
 
 shift
+if [ -f ./mysettings.sh ]; then
+  source ./mysettings.sh
+fi
 
 while [[ $# -gt 0 ]]; do
 optkey="$1"
