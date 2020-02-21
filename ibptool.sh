@@ -375,7 +375,7 @@ function ibpdown() {
   remove "ClusterRoleBinding ibpclusterrole"
   remove "ClusterRole ibpclusterrole"
 
-  echo "3. Remove the security context constraint"
+  echo "3. Remove SecurityContextConstraints"
   remove "SecurityContextConstraints ibpscc"
 
 }
