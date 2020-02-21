@@ -4,8 +4,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-set -e
 
+function dovars() {
 read -d '' ibpscc << EOF || true
 allowHostDirVolumePlugin: true
 allowHostIPC: true
@@ -43,7 +43,7 @@ volumes:
 - "*"
 EOF
 
-read -d '' ibproles << EOF || true
+read -d '' ibpclusterrole << EOF || true
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -132,8 +132,9 @@ rules:
   - '*'
   verbs:
   - '*'
+EOF
 
----
+read -d '' ibpclusterrolebinding << EOF || true
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -267,6 +268,7 @@ spec:
       size: 10Gi
 EOF
 
+}
 
 function isValidateCMD() {
   if [ -z $MODE ] || [[ '-h' == "$MODE" ]] || [[ '--help' == "$MODE" ]]; then
@@ -300,13 +302,22 @@ function printHelp() {
   echo
 }
 
+function remove() {
+  res=$(oc get $1 --no-headers 2>/dev/null || true)
+  if [[ ! -z "$res" ]]; then
+    oc delete $1 >/dev/null 2>&1
+    sleep 3
+  fi
+}
+
 function ibpup() {
   echo "1. Create os project"
+  remove "Namespace $PROJECT_NAME"
   oc create namespace $PROJECT_NAME
 
   echo "2. Apply the security context constraint"
-  echo "$ibpscc" | envsubst > ibp-scc.yaml
-  oc apply -f ibp-scc.yaml
+  remove "SecurityContextConstraints ibpscc"
+  echo "$ibpscc" | oc apply -f /dev/stdin
   sleep 3
 
   echo "3. Add security context constraint to user"
@@ -314,9 +325,15 @@ function ibpup() {
   oc adm policy add-scc-to-group ibpscc system:serviceaccounts:$PROJECT_NAME
   sleep 3
 
-  echo "4. Apply ClusterRole and ClusterRoleBinding"
-  echo "$ibproles" | envsubst > ibp-clusterroles.yaml
-  oc apply -f ibp-clusterroles.yaml
+  echo "4. Apply ClusterRole"
+  remove "ClusterRole ibpclusterrole"
+  echo "$ibpclusterrole" | oc apply -f /dev/stdin
+  sleep 3
+
+  echo "5. Apply ClusterRoleBinding"
+  remove "ClusterRoleBinding ibpclusterrolebinding -n $PROJECT_NAME"
+  echo "$ibpclusterrolebinding" | oc apply -f /dev/stdin
+  sleep 3
 
   echo "6. Apply ClusterRole to user"
   oc adm policy add-cluster-role-to-user ibpclusterrole system:serviceaccounts:$PROJECT_NAME
@@ -329,8 +346,7 @@ function ibpup() {
     -n $PROJECT_NAME
 
   echo "7. Deploy the operator"
-  echo "$ibpoperator" | envsubst > ibp-operator.yaml
-  oc apply -f ibp-operator.yaml -n $PROJECT_NAME
+  echo "$ibpoperator" | oc apply -n $PROJECT_NAME -f /dev/stdin
   while : ; do
     sleep 3
     res=$(oc -n $PROJECT_NAME get pods | grep "^ibp-operator-" | grep "Running" | grep "1/1" || true)
@@ -341,51 +357,27 @@ function ibpup() {
   done
 
   echo "8. Deploy the IBP Console"
-  echo "$ibpconsole" | envsubst > ibp-console.yaml
-  oc apply -f ibp-console.yaml -n $PROJECT_NAME
-  # while : ; do
-  #   sleep 3
-  #   res=$(oc -n $PROJECT_NAME get pods | grep "^ibpconsole-" | grep "Running" | grep "4/4" || true)
-  #   if [[ ! -z $res ]]; then
-  #     break
-  #   fi
-  #   echo 'Waiting for ibp console to be ready...'
-  # done
+  echo "$ibpconsole" | oc apply -n $PROJECT_NAME -f /dev/stdin
   sleep 3
 
   echo ""
-  echo -e "\e[32mWait few minutes, then access IBP Console at the following address:"
-  echo -e "\e[32mhttps://$PROJECT_NAME-ibpconsole-console.$DOMAIN_URL"
+  echo -e "\e[32mWait few minutes, then access IBP Console at the following address:\e[0m"
+  echo -e "\e[32mhttps://$PROJECT_NAME-ibpconsole-console.$DOMAIN_URL\e[0m"
   echo ""
 }
 
 function ibpdown() {
-  echo "1. Remove the IBP Console"
-  echo "$ibpconsole" | envsubst > ibp-console.yaml
-  oc -n $PROJECT_NAME delete -f ibp-console.yaml
+  echo "1. Remove IBP project"
+  remove "namespace $PROJECT_NAME"
 
-  echo "2. Remove ibp operator"
-  echo "$ibpoperator" | envsubst > ibp-operator.yaml
-  oc -n $PROJECT_NAME delete -f ibp-operator.yaml
+  echo "2. Remove ClusterRole from user, Cluster Role Binding and Cluster Role"
+  remove "ClusterRoleBinding ibpclusterrolebinding"
+  remove "ClusterRoleBinding ibpclusterrole"
+  remove "ClusterRole ibpclusterrole"
 
-  echo "3. remove secret for entitlement"
-  oc -n $PROJECT_NAME delete secret docker-key-secret
+  echo "3. Remove the security context constraint"
+  remove "SecurityContextConstraints ibpscc"
 
-  echo "4. Remove ClusterRole from user, Cluster Role Binding and Cluster Role"
-  oc adm policy remove-cluster-role-from-user ibpclusterrole system:serviceaccounts:$PROJECT_NAME
-  echo "$ibproles" | envsubst > ibp-clusterroles.yaml
-  oc delete -f ibp-clusterroles.yaml
-
-  echo "5. Remove SecurityContextConstraint from user"
-  oc adm policy remove-scc-from-group ibpscc system:serviceaccounts:$PROJECT_NAME
-  oc adm policy remove-scc-from-user ibpscc system:serviceaccounts:$PROJECT_NAME
-
-  echo "6. remove the security context constraint"
-  echo "$ibpscc" | envsubst > ibp-scc.yaml
-  oc delete -f ibp-scc.yaml
-
-  echo "7. remove os project"
-  oc delete project $PROJECT_NAME
 }
 
 MODE=$1
@@ -434,16 +426,18 @@ for value in ${params[@]}; do
 done
 
 echo "Your current settings for IBP"
-echo "PROJECT_NAME=$PROJECT_NAME"
-echo "ENTITLEMENT_KEY=$ENTITLEMENT_KEY"
-echo "EMAIL_ADDRESS=$EMAIL_ADDRESS"
-echo "CONSOLE_PASSWORD=$CONSOLE_PASSWORD"
-echo "IMAGE_SERVER=$IMAGE_SERVER"
-echo "IMAGE_NAME=$IMAGE_NAME"
-echo "STORAGE_CLASS=$STORAGE_CLASS"
-echo "DOMAIN_URL=$DOMAIN_URL"
+echo -e "PROJECT_NAME=\e[32m$PROJECT_NAME\e[0m"
+echo -e "ENTITLEMENT_KEY=\e[32m$ENTITLEMENT_KEY\e[0m"
+echo -e "EMAIL_ADDRESS=\e[32m$EMAIL_ADDRESS\e[0m"
+echo -e "CONSOLE_PASSWORD=\e[32m$CONSOLE_PASSWORD\e[0m"
+echo -e "IMAGE_SERVER=\e[32m$IMAGE_SERVER\e[0m"
+echo -e "IMAGE_NAME=\e[32m$IMAGE_NAME\e[0m"
+echo -e "STORAGE_CLASS=\e[32m$STORAGE_CLASS\e[0m"
+echo -e "DOMAIN_URL=\e[32m$DOMAIN_URL\e[0m"
 
 if [[ 'up' == "$MODE" ]]; then
+   set -e
+   dovars
    ibpup
 elif [[ 'down' == "$MODE" ]]; then
    ibpdown
