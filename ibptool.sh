@@ -343,19 +343,18 @@ function ibpup() {
   echo "8. Deploy the IBP Console"
   echo "$ibpconsole" | envsubst > ibp-console.yaml
   oc apply -f ibp-console.yaml -n $PROJECT_NAME
-  while : ; do
-    sleep 3
-    res=$(oc -n $PROJECT_NAME get pods | grep "^ibpconsole-" | grep "Running" | grep "4/4" || true)
-    if [[ ! -z $res ]]; then
-      break
-    fi
-    echo 'Waiting for ibp console to be ready...'
-  done
+  # while : ; do
+  #   sleep 3
+  #   res=$(oc -n $PROJECT_NAME get pods | grep "^ibpconsole-" | grep "Running" | grep "4/4" || true)
+  #   if [[ ! -z $res ]]; then
+  #     break
+  #   fi
+  #   echo 'Waiting for ibp console to be ready...'
+  # done
   sleep 3
 
   echo ""
-  echo ""
-  echo -e "\e[32mAccess IBP Console at the following address:"
+  echo -e "\e[32mWait few minutes, then access IBP Console at the following address:"
   echo -e "\e[32mhttps://$PROJECT_NAME-ibpconsole-console.$DOMAIN_URL"
   echo ""
 }
