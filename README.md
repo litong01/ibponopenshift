@@ -1,13 +1,13 @@
 ## Deploy IBP onto OpenShift
 
-### Clone this repo
+### Clone this repo and make the tool executable
 
 ```
 git clone https://github.com/litong01/ibponopenshift.git
 cd ibponopenshift && chmod +x ibptool.sh 
 ```
 
-### Modify mysettings.sh file to fill in your own settings
+### Modify mysettings.sh file with your own settings
 
 ### Run the following command to start up IBP on OpenShift
 
@@ -18,4 +18,9 @@ cd ibponopenshift && chmod +x ibptool.sh
 ### Remove IBP from OpenShift
 ```
 ./ibptool.sh down
+```
+
+### You can change any parameter value by using command line options like this
+```
+./ibptool.sh up --email-address fake@ddd.com --entitlement-key keyvalue
 ```
