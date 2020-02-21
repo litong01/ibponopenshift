@@ -9,7 +9,7 @@ cd ibponopenshift && chmod +x ibptool.sh
 
 ### Modify mysettings.sh file with your own settings
 
-### Run the following command to start up IBP on OpenShift
+### Start up IBP on OpenShift
 
 ```
 ./ibptool.sh up
