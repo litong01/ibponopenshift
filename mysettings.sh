@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-export PROJECT_NAME=greatweb
+export PROJECT_NAME=<<Pick a string for your project name>>
 export ENTITLEMENT_KEY=<<Your IBP Entitlement Key>>
 export EMAIL_ADDRESS=<<Your IBP registration email address>>
 export CONSOLE_PASSWORD=<<Pick a string as your IBP console password>>
