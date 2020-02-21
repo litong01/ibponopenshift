@@ -5,7 +5,6 @@
 ```
 git clone https://github.com/litong01/ibponopenshift.git
 cd ibponopenshift && chmod +x ibptool.sh 
-
 ```
 
 ### Modify mysettings.sh file to fill in your own settings
