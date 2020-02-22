@@ -335,11 +335,7 @@ function ibpup() {
   echo "$ibpclusterrolebinding" | oc apply -f /dev/stdin
   sleep 3
 
-  echo "6. Apply ClusterRole to user"
-  oc adm policy add-cluster-role-to-user ibpclusterrole system:serviceaccounts:$PROJECT_NAME
-  sleep 3
-
-  echo "7. Create secret for entitlement"
+  echo "6. Create secret for entitlement"
   oc create secret docker-registry docker-key-secret \
     --docker-server=$IMAGE_SERVER --docker-username=$EMAIL_ADDRESS \
     --docker-password=$ENTITLEMENT_KEY --docker-email=$EMAIL_ADDRESS \
@@ -347,21 +343,32 @@ function ibpup() {
 
   echo "7. Deploy the operator"
   echo "$ibpoperator" | oc apply -n $PROJECT_NAME -f /dev/stdin
+  echo -e -n 'Waiting for IBP operator to be ready\e[32m.'
   while : ; do
     sleep 3
     res=$(oc -n $PROJECT_NAME get pods | grep "^ibp-operator-" | grep "Running" | grep "1/1" || true)
     if [[ ! -z $res ]]; then
+      echo ''; echo -e 'IBP operator is now ready\e[0m'
       break
     fi
-    echo 'Waiting for ibp operator to be ready...'
+    echo -n '.'
   done
 
   echo "8. Deploy the IBP Console"
   echo "$ibpconsole" | oc apply -n $PROJECT_NAME -f /dev/stdin
-  sleep 3
+  echo -e -n 'Waiting for IBP console to be ready\e[32m.'
+  while : ; do
+    sleep 3
+    res=$(oc -n $PROJECT_NAME get pods | grep "^ibpconsole-" | grep "Running" | grep "4/4" || true)
+    if [[ ! -z $res ]]; then
+      echo ''; echo -e 'IBP Console is now ready\e[0m'
+      break
+    fi
+    echo -n '.'
+  done
 
   echo ""
-  echo -e "\e[32mWait few minutes, then access IBP Console at the following address:\e[0m"
+  echo -e "\e[32mAccess IBP Console at the following address:\e[0m"
   echo -e "\e[32mhttps://$PROJECT_NAME-ibpconsole-console.$DOMAIN_URL\e[0m"
   echo ""
 }
@@ -370,14 +377,12 @@ function ibpdown() {
   echo "1. Remove IBP project"
   remove "namespace $PROJECT_NAME"
 
-  echo "2. Remove ClusterRole from user, Cluster Role Binding and Cluster Role"
+  echo "2. Remove ClusterRole and ClusterRoleBinding"
   remove "ClusterRoleBinding ibpclusterrolebinding"
-  remove "ClusterRoleBinding ibpclusterrole"
   remove "ClusterRole ibpclusterrole"
 
   echo "3. Remove SecurityContextConstraints"
   remove "SecurityContextConstraints ibpscc"
-
 }
 
 MODE=$1
@@ -427,7 +432,7 @@ done
 
 echo "Your current settings for IBP"
 echo -e "PROJECT_NAME=\e[32m$PROJECT_NAME\e[0m"
-echo -e "ENTITLEMENT_KEY=\e[32m$ENTITLEMENT_KEY\e[0m"
+echo -e "ENTITLEMENT_KEY=\e[32m******\e[0m"
 echo -e "EMAIL_ADDRESS=\e[32m$EMAIL_ADDRESS\e[0m"
 echo -e "CONSOLE_PASSWORD=\e[32m$CONSOLE_PASSWORD\e[0m"
 echo -e "IMAGE_SERVER=\e[32m$IMAGE_SERVER\e[0m"
