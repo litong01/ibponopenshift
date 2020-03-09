@@ -9,6 +9,7 @@ cd ibponopenshift && chmod +x ibptool.sh
 
 ### Modify mysettings.sh file with your own settings
 
+For details on how each variable should be set, please see this [tutorial](https://developer.ibm.com/technologies/blockchain/tutorials/deploy-ibm-blockchain-platform-onto-openshift)
 ### Start up IBP on OpenShift
 
 ```
